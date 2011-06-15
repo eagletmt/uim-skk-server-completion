@@ -1,0 +1,119 @@
+--- uim/skk.c.orig	2011-01-22 11:16:42.000000000 +0900
++++ uim/skk.c	2011-06-15 19:18:57.969623749 +0900
+@@ -1916,9 +1916,102 @@
+ }
+ 
+ static struct skk_comp_array *
+-find_comp_array(dic_info *di, const char *s, uim_lisp use_look_)
++make_comp_array_from_server(dic_info *di, const char *s, uim_lisp use_look_)
+ {
++  char r;
+   struct skk_comp_array *ca;
++  struct skk_line *sl;
++  int n = 0, ret, len;
++  int i;
++  char buf[SKK_SERV_BUFSIZ];
++  char *line;
++  ssize_t nr;
++
++  if (!di) {
++    return NULL;
++  }
++  if (!(di->skkserv_state & SKK_SERV_CONNECTED)) {
++    if (!((di->skkserv_state |= open_skkserv(di->skkserv_hostname,
++					     di->skkserv_portnum,
++					     di->skkserv_family)) &
++	  SKK_SERV_CONNECTED))
++      return NULL;
++  }
++
++  fprintf(wserv, "4%s \n", s);
++  ret = fflush(wserv);
++  if (ret != 0 && errno == EPIPE) {
++    skkserv_disconnected(di);
++    return NULL;
++  }
++
++  if ((nr = read(skkservsock, &r, 1)) == -1 || nr == 0) {
++    skkserv_disconnected(di);
++    return NULL;
++  }
++
++  if (r == '1') {
++    uim_asprintf(&line, "%s ", s);
++    while (1) {
++      if ((nr = read(skkservsock, &r, 1)) == -1 || nr == 0) {
++        skkserv_disconnected(di);
++        return NULL;
++      }
++
++      if (r == '\n') {
++        len = strlen(line) + n;
++        line = uim_realloc(line, len + 1);
++        strlcat(line, buf, len + 1);
++        break;
++      }
++
++      buf[n] = r;
++      buf[n + 1] = '\0';
++      if (n == SKK_SERV_BUFSIZ - 2) {
++        len = strlen(line) + n + 1;
++        line = uim_realloc(line, len + 1);
++        strlcat(line, buf, len + 1);
++        n = 0;
++      } else {
++        n++;
++      }
++    }
++    sl = compose_line(di, s, '\0', line);
++    free(line);
++
++    ca = uim_malloc(sizeof(struct skk_comp_array));
++    ca->nr_comps = 0;
++    ca->refcount = 0;
++    ca->comps = NULL;
++    ca->head = NULL;
++    ca->next = NULL;
++    for (i = 0; i < sl->cands[0].nr_cands; i++) {
++      if (strcmp(s, sl->cands[0].cands[i]) != 0) {
++        ca->nr_comps++;
++        ca->comps = uim_realloc(ca->comps, sizeof(char *) * ca->nr_comps);
++        ca->comps[ca->nr_comps - 1] = uim_strdup(sl->cands[0].cands[i]);
++      }
++    }
++    free_skk_line(sl);
++    if (ca->nr_comps == 0) {
++      free(ca);
++      ca = NULL;
++    } else {
++      ca->head = uim_strdup(s);
++      ca->next = skk_comp;
++      skk_comp = ca;
++    }
++    return ca;
++  } else {
++    while ((nr = read(skkservsock, &r, 1)) != -1 && nr != 0 && r != '\n');
++    return NULL;
++  }
++}
++
++static struct skk_comp_array *
++find_comp_array(dic_info *di, const char *s, uim_lisp use_look_)
++{
++  struct skk_comp_array *ca, *ca2;
+ 
+   if (strlen(s) == 0)
+     return NULL;
+@@ -1929,6 +2022,12 @@
+   }
+   if (ca == NULL) {
+     ca = make_comp_array_from_cache(di, s, use_look_);
++    if (di->skkserv_state & SKK_SERV_USE) {
++      ca2 = make_comp_array_from_server(di, s, use_look_);
++      if (ca2 != NULL) {
++        ca = ca2;
++      }
++    }
+   }
+ 
+   return ca;
