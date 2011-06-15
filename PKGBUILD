@@ -16,7 +16,7 @@ options=('!libtool')
 source=("http://uim.googlecode.com/files/${pkgname}-${pkgver}.tar.bz2"
          server-completion.patch)
 sha1sums=('b79ed80c2557e804e6d3d2771a213a29cd932a73'
-          '63253e0252cd0b9e1671be1c1849d2ba5db13d9b')
+          'ac72bdd6b0ea92e2e898d2dd88663c2d36a9cc3d')
 
 install=install
 

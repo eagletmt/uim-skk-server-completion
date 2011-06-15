@@ -1,6 +1,6 @@
 --- uim/skk.c.orig	2011-01-22 11:16:42.000000000 +0900
-+++ uim/skk.c	2011-06-15 19:18:57.969623749 +0900
-@@ -1916,9 +1916,102 @@
++++ uim/skk.c	2011-06-15 23:02:28.941438773 +0900
+@@ -1916,9 +1916,103 @@
  }
  
  static struct skk_comp_array *
@@ -44,6 +44,7 @@
 +    while (1) {
 +      if ((nr = read(skkservsock, &r, 1)) == -1 || nr == 0) {
 +        skkserv_disconnected(di);
++        free(line);
 +        return NULL;
 +      }
 +
@@ -104,7 +105,7 @@
  
    if (strlen(s) == 0)
      return NULL;
-@@ -1929,6 +2022,12 @@
+@@ -1929,6 +2023,12 @@
    }
    if (ca == NULL) {
      ca = make_comp_array_from_cache(di, s, use_look_);
