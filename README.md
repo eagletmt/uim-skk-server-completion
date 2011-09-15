@@ -1,4 +1,6 @@
 # uim-skk-server-completion
+**server completion の機能が本家に実装されたので，このパッチはもはや無意味です．**
+
 [uim](http://code.google.com/p/uim/) の SKK で server completion できるようにするパッチ．
 server completion に対応した skkserv は [yaskkserv](http://umiushi.org/~wac/yaskkserv/) 等．
 
